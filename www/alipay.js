@@ -1,7 +1,7 @@
 /*global cordova, module*/
 
 module.exports = {
-    pay: function (subject, body, price, successCallback, errorCallback) {
-        cordova.exec(successCallback, errorCallback, "AliPay", "pay", [subject, body, price]);
+    pay: function (name, body, price, orderId, notifyUrl, successCallback, errorCallback) {
+        cordova.exec(successCallback, errorCallback, "AliPay", "pay", [name, body, price, orderId, notifyUrl]);
     }
 };

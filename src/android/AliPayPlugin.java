@@ -8,7 +8,9 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
+import org.json.JSONException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -19,6 +21,7 @@ import java.util.Random;
 
 public class AliPayPlugin extends CordovaPlugin {
     final private static String TAG = "AliPayPlugin";
+    CallbackContext mContext;
 
     //商户PID
     private String partner = "";
@@ -37,13 +40,20 @@ public class AliPayPlugin extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
-        this.pay(args.optString(0), args.optString(1), args.optString(2));
+        mContext = callbackContext;
+        try {
+            this.pay(args.getString(0), args.getString(1), args.getString(2), args.getString(3), args.getString(4));
+        } catch (JSONException e) {
+            e.printStackTrace();
+            mContext.error(e.getMessage());
+            return false;
+        }
         return true;
     }
 
-    public void pay(String subject, String body, String price) {
+    public void pay(String subject, String body, String price, String orderId, String notifyUrl) {
         // 订单
-        String orderInfo = getOrderInfo(subject, body, price);
+        String orderInfo = getOrderInfo(subject, body, price, orderId, notifyUrl);
         Log.d(TAG, orderInfo);
 
         // 对订单做RSA 签名
@@ -52,6 +62,7 @@ public class AliPayPlugin extends CordovaPlugin {
             // 仅需对sign 做URL编码
             sign = URLEncoder.encode(sign, "UTF-8");
         } catch (UnsupportedEncodingException e) {
+            mContext.error(e.getMessage());
             e.printStackTrace();
         }
 
@@ -66,6 +77,7 @@ public class AliPayPlugin extends CordovaPlugin {
                 PayTask alipay = new PayTask(cordova.getActivity());
                 // 调用支付接口，获取支付结果
                 String result = alipay.pay(payInfo);
+                mContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
             }
         });
     }
@@ -74,7 +86,7 @@ public class AliPayPlugin extends CordovaPlugin {
      * create the order info. 创建订单信息
      *
      */
-    public String getOrderInfo(String subject, String body, String price) {
+    public String getOrderInfo(String subject, String body, String price, String orderId, String notifyUrl) {
         // 签约合作者身份ID
         String orderInfo = "partner=" + "\"" + partner + "\"";
 
@@ -82,7 +94,7 @@ public class AliPayPlugin extends CordovaPlugin {
         orderInfo += "&seller_id=" + "\"" + seller + "\"";
 
         // 商户网站唯一订单号
-        orderInfo += "&out_trade_no=" + "\"" + getOutTradeNo() + "\"";
+        orderInfo += "&out_trade_no=" + "\"" + orderId + "\"";
 
         // 商品名称
         orderInfo += "&subject=" + "\"" + subject + "\"";
@@ -94,7 +106,7 @@ public class AliPayPlugin extends CordovaPlugin {
         orderInfo += "&total_fee=" + "\"" + price + "\"";
 
         // 服务器异步通知页面路径
-        orderInfo += "&notify_url=" + "\"http://duduche.me/notify.htm\"";
+        orderInfo += "&notify_url=" + "\"" + notifyUrl + "\"";
 
         // 服务接口名称， 固定值
         orderInfo += "&service=\"mobile.securitypay.pay\"";
@@ -122,21 +134,6 @@ public class AliPayPlugin extends CordovaPlugin {
         // orderInfo += "&paymethod=\"expressGateway\"";
 
         return orderInfo;
-    }
-
-    /**
-     * get the out_trade_no for an order. 生成商户订单号，该值在商户端应保持唯一（可自定义格式规范）
-     *
-     */
-    public String getOutTradeNo() {
-        SimpleDateFormat format = new SimpleDateFormat("MMddHHmmss", Locale.getDefault());
-        Date date = new Date();
-        String key = format.format(date);
-
-        Random r = new Random();
-        key = key + r.nextInt();
-        key = key.substring(0, 15);
-        return key;
     }
 
     /**
