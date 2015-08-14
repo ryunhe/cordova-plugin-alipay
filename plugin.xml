@@ -13,7 +13,6 @@
   <preference name="SELLER_ACCOUNT"/>
   <preference name="PRIVATE_KEY"/>
 
-  <asset src="www/alipay.js" target="js/alipay.js"/>
 
   <js-module src="www/alipay.js" name="alipay">
     <clobbers target="alipay" />
@@ -56,7 +55,7 @@
   </platform>
 
   <platform name="ios">
-    <config-file target="config.xml" parent="/widget">
+    <config-file target="config.xml" parent="/*">
       <preference name="partner" value="$PARTNER_ID" />
       <preference name="seller" value="$SELLER_ACCOUNT" />
       <preference name="private_key" value="$PRIVATE_KEY" />
