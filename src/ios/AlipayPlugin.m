@@ -13,21 +13,21 @@
     self.privateKey = [viewController.settings objectForKey:@"private_key"];
 }
 
-- (NSString *)generateTradeNO
-{
-    static int kNumber = 15;
-
-    NSString *sourceStr = @"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    NSMutableString *resultStr = [[NSMutableString alloc] init];
-    srand(time(0));
-    for (int i = 0; i < kNumber; i++)
-    {
-        unsigned index = rand() % [sourceStr length];
-        NSString *oneStr = [sourceStr substringWithRange:NSMakeRange(index, 1)];
-        [resultStr appendString:oneStr];
-    }
-    return resultStr;
-}
+//- (NSString *)generateTradeNO
+//{
+//    static int kNumber = 15;
+//
+//    NSString *sourceStr = @"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+//    NSMutableString *resultStr = [[NSMutableString alloc] init];
+//    srand(time(0));
+//    for (int i = 0; i < kNumber; i++)
+//    {
+//        unsigned index = rand() % [sourceStr length];
+//        NSString *oneStr = [sourceStr substringWithRange:NSMakeRange(index, 1)];
+//        [resultStr appendString:oneStr];
+//    }
+//    return resultStr;
+//}
 
 - (void) pay:(CDVInvokedUrlCommand*)command
 {
@@ -55,14 +55,21 @@
      *生成订单信息及签名
      */
     //将商品信息赋予AlixPayOrder的成员变量
+    
+    NSString *subject = [command argumentAtIndex:0];
+    NSString *body = [command argumentAtIndex:1];
+    NSString *price = [command argumentAtIndex:2];
+    NSString *oid = [command argumentAtIndex:3];
+    NSString *notifyUrl = [command argumentAtIndex:4];
+    
     Order *order = [[Order alloc] init];
     order.partner = self.partner;
     order.seller = self.seller;
-    order.tradeNO = [self generateTradeNO]; //订单ID（由商家自行制定）
-    order.productName = @"Ceshibiaoti"; //商品标题
-    order.productDescription = @"ceshi miaoshu"; //商品描述
-    order.amount = @"0.01"; //商品价格
-    order.notifyURL =  @"http://www.xxx.com"; //回调URL
+    order.tradeNO = oid; //订单ID（由商家自行制定）
+    order.productName = subject; //商品标题
+    order.productDescription = body; //商品描述
+    order.amount = price; //商品价格
+    order.notifyURL =  notifyUrl; //回调URL
 
     order.service = @"mobile.securitypay.pay";
     order.paymentType = @"1";
@@ -71,7 +78,7 @@
     order.showUrl = @"m.alipay.com";
 
     //应用注册scheme,在AlixPayDemo-Info.plist定义URL types
-    NSString *appScheme = @"alisdkdemo";
+    NSString *appScheme = @"duduche";
 
     //将商品信息拼接成字符串
     NSString *orderSpec = [order description];
@@ -88,7 +95,22 @@
                        orderSpec, signedString, @"RSA"];
 
         [[AlipaySDK defaultService] payOrder:orderString fromScheme:appScheme callback:^(NSDictionary *resultDic) {
-            NSLog(@"reslut = %@",resultDic);
+            NSLog(@"result = %@",resultDic);
+            
+            NSString *resultStatus = [resultDic valueForKey:@"resultStatus"];
+//            NSString *resultString = [resultDic valueForKey:@"result"];
+            NSString *memo = [resultDic valueForKey:@"memo"];
+            
+            if ([resultStatus isEqualToString:@"9000"]) {
+                CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:memo];
+                [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+            } else {
+                if ([resultStatus isEqualToString:@"8000"]) {
+                    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:memo];
+                    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                }
+            }
+            
         }];
 
     }
